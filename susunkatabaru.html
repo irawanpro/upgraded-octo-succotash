@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Susun Kata Hewan</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Soft background color */
+        }
+        .container {
+            background-color: #ffffff; /* White container background */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); /* Soft shadow */
+        }
+        input[type="text"] {
+            border: 2px solid #cbd5e0; /* Input border color */
+            transition: border-color 0.3s ease;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #4299e1; /* Focus border color */
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5); /* Focus shadow */
+        }
+        .message {
+            transition: opacity 0.5s ease-in-out;
+        }
+        /* Styling for the fact and hint display areas */
+        #fact-display, #hint-display {
+            background-color: #e0f2f7; /* Light blue background */
+            border-left: 5px solid #00bcd4; /* Cyan border */
+            padding: 1rem;
+            margin-top: 1.5rem;
+            border-radius: 0.5rem;
+            font-style: italic;
+            color: #263238; /* Dark grey text */
+            text-align: left;
+            opacity: 0; /* Initially hidden */
+            transition: opacity 0.5s ease-in-out;
+        }
+        #fact-display.show, #hint-display.show {
+            opacity: 1; /* Show when 'show' class is added */
+        }
+        /* Styling for the final message */
+        #final-message {
+            font-size: 3.5rem; /* Larger font size */
+            font-weight: bold;
+            color: #22c55e; /* Green color */
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2); /* Subtle shadow */
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+            display: none; /* Hidden by default */
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="container max-w-md w-full mx-auto p-8 rounded-2xl text-center">
+        <h1 class="text-4xl font-extrabold text-gray-800 mb-6">Susun Kata Hewan</h1>
+
+        <div class="mb-8">
+            <!-- Image will be loaded dynamically. Using a fallback placeholder. -->
+            <img id="animal-image" src="https://via.placeholder.com/400x250?text=Memuat+Gambar..." alt="Gambar Hewan" class="w-full h-48 object-cover rounded-xl shadow-md mx-auto mb-4">
+            <p id="scrambled-word" class="text-5xl font-bold text-blue-700 tracking-wider mb-6"></p>
+        </div>
+
+        <input type="text" id="answer-input" placeholder="Ketik jawaban di sini..."
+               class="w-full p-4 text-2xl text-center rounded-xl mb-6 focus:ring-blue-500 focus:border-blue-500">
+
+        <p id="message" class="message text-lg font-semibold h-8"></p>
+
+        <div id="fact-display" class="hidden text-base"></div>
+        <div id="hint-display" class="hidden text-base"></div> <!-- Element for hint display -->
+
+        <div class="flex flex-col sm:flex-row gap-4 mt-6">
+            <button id="get-fact-button"
+                    class="hidden flex-1 py-4 bg-purple-600 text-white font-bold text-xl rounded-xl hover:bg-purple-700 transition duration-300 ease-in-out shadow-lg">
+                Fakta Menarik ✨
+            </button>
+            <button id="get-hint-button"
+                    class="hidden flex-1 py-4 bg-yellow-600 text-white font-bold text-xl rounded-xl hover:bg-yellow-700 transition duration-300 ease-in-out shadow-lg">
+                Petunjuk ✨
+            </button>
+            <button id="next-button"
+                    class="hidden flex-1 py-4 bg-blue-600 text-white font-bold text-xl rounded-xl hover:bg-blue-700 transition duration-300 ease-in-out shadow-lg">
+                Selanjutnya
+            </button>
+        </div>
+
+        <!-- Element for the final message -->
+        <p id="final-message" class="hidden"></p>
+    </div>
+
+    <script>
+        // Game data: animal name, scrambled word, image URL, an interesting fact, and a hint.
+        // PENTING: Ganti URL di bawah ini dengan DIRECT LINK dari layanan hosting gambar seperti Imgur!
+        const animals = [
+            { name: "KUCING", scrambled: "CINGUK", imageUrl: "https://i.imgur.com/gpgd798.jpeg", fact: "Kucing bisa membuat lebih dari 100 suara berbeda, sedangkan anjing hanya sekitar 10.", hint: "Hewan peliharaan yang suka mengeong." },
+            { name: "ANJING", scrambled: "JINGNA", imageUrl: "https://i.imgur.com/jjW3foW.jpeg", fact: "Anjing memiliki indra penciuman yang 10.000 hingga 100.000 kali lebih kuat daripada manusia.", hint: "Sahabat manusia yang suka menggonggong." },
+            { name: "GAJAH", scrambled: "JAHGA", imageUrl: "https://i.imgur.com/eOq8NSc.jpeg", fact: "Gajah adalah satu-satunya hewan yang tidak bisa melompat.", hint: "Hewan darat terbesar dengan belalai panjang." },
+            { name: "HARIMAU", scrambled: "MAUHARI", imageUrl: "https://i.imgur.com/oBH6y1T.jpeg", fact: "Setiap harimau memiliki pola garis yang unik, seperti sidik jari manusia.", hint: "Kucing besar dengan loreng oranye dan hitam." },
+            { name: "BERUANG", scrambled: "RUANGABE", imageUrl: "https://i.imgur.com/bi6iU72.jpeg", fact: "Beruang kutub memiliki kulit hitam di bawah bulu putihnya untuk menyerap panas matahari.", hint: "Hewan besar berbulu tebal, suka madu." },
+            { name: "SINGA", scrambled: "GASIN", imageUrl: "https://i.imgur.com/YONbuSH.jpeg", fact: "Meskipun sering disebut raja hutan, singa sebenarnya hidup di padang rumput dan sabana.", hint: "Kucing besar dengan surai, disebut raja hutan." },
+            { name: "KUDA", scrambled: "DAKU", imageUrl: "https://i.imgur.com/jBt7VsL.jpeg", fact: "Kuda bisa tidur sambil berdiri, tetapi mereka harus berbaring untuk mendapatkan tidur REM (tidur nyenyak).", hint: "Hewan yang ditunggangi, suka berlari kencang." },
+            { name: "AYAM", scrambled: "YAMA", imageUrl: "https://i.imgur.com/jOzBs0Q.jpeg", fact: "Ayam adalah burung yang paling banyak populasinya di dunia.", hint: "Hewan ternak yang bertelur dan berkokok." },
+            { name: "BEBEK", scrambled: "BEKBE", imageUrl: "https://i.imgur.com/G4NYfRc.jpeg", fact: "Bebek memiliki kelenjar minyak khusus yang membuat bulu mereka tahan air.", hint: "Burung air yang suka berenang dan berkuak." },
+            { name: "IKAN", scrambled: "NIKA", imageUrl: "https://i.imgur.com/NMcRh4K.jpeg", fact: "Ikan mas koki bisa hidup hingga 40 tahun jika dirawat dengan baik.", hint: "Hewan air yang bernapas dengan insang." }
+        ];
+
+        let currentAnimalIndex = 0; // Current animal index
+        let clearInputTimeout; // Variable to hold the timeout for clearing input
+
+        const animalImage = document.getElementById('animal-image'); // Animal image element
+        const scrambledWordDisplay = document.getElementById('scrambled-word'); // Scrambled word element
+        const answerInput = document.getElementById('answer-input'); // Answer input element
+        const messageDisplay = document.getElementById('message'); // Message display element
+        const nextButton = document.getElementById('next-button'); // Next button element
+        const getFactButton = document.getElementById('get-fact-button'); // Get Fact button element
+        const getHintButton = document.getElementById('get-hint-button'); // Get Hint button element
+        const factDisplay = document.getElementById('fact-display'); // Fact display area
+        const hintDisplay = document.getElementById('hint-display'); // Hint display area
+        const finalMessageDisplay = document.getElementById('final-message'); // Final message element
+
+        // Function to load a new level
+        function loadLevel() {
+            // Clear any existing timeout for input clearing
+            if (clearInputTimeout) {
+                clearTimeout(clearInputTimeout);
+            }
+
+            // Hide the final message at the start of a new level
+            finalMessageDisplay.classList.add('hidden');
+            finalMessageDisplay.textContent = ''; // Clear its content
+
+            if (currentAnimalIndex < animals.length) {
+                const currentAnimal = animals[currentAnimalIndex];
+                animalImage.src = currentAnimal.imageUrl; // Set animal image
+                // Fallback if image fails to load
+                animalImage.onerror = () => {
+                    console.error(`Gambar gagal dimuat: ${currentAnimal.imageUrl}. Menggunakan placeholder.`);
+                    // Use a generic placeholder if the actual image fails to load
+                    animalImage.src = `https://via.placeholder.com/400x250?text=Gambar+Tidak+Dapat+Dimuat`;
+                };
+                scrambledWordDisplay.textContent = currentAnimal.scrambled; // Set scrambled word
+                answerInput.value = ''; // Clear input
+                messageDisplay.textContent = ''; // Clear message
+                factDisplay.textContent = ''; // Clear fact display
+                factDisplay.classList.remove('show'); // Hide fact display
+                factDisplay.classList.add('hidden'); // Ensure it's hidden
+                hintDisplay.textContent = ''; // Clear hint display
+                hintDisplay.classList.remove('show'); // Hide hint display
+                hintDisplay.classList.add('hidden'); // Ensure it's hidden
+
+                // Show input and buttons for active levels
+                answerInput.classList.remove('hidden'); // Show input field
+                answerInput.disabled = false; // Enable input
+                nextButton.classList.add('hidden'); // Hide next button
+                getFactButton.classList.add('hidden'); // Hide get fact button
+                getHintButton.classList.remove('hidden'); // Show get hint button
+                answerInput.focus(); // Focus on input
+            } else {
+                // Game finished
+                animalImage.src = "https://via.placeholder.com/400x250?text=Selamat!+Anda+Menyelesaikan+Game!"; // Final image
+                scrambledWordDisplay.textContent = ""; // Clear scrambled word
+                answerInput.value = ''; // Clear input
+                answerInput.classList.add('hidden'); // Hide input field
+                answerInput.disabled = true; // Disable input
+                messageDisplay.textContent = ""; // Clear message
+                nextButton.classList.add('hidden'); // Hide next button
+                getFactButton.classList.add('hidden'); // Hide get fact button
+                getHintButton.classList.add('hidden'); // Hide get hint button
+                factDisplay.textContent = ''; // Clear fact display
+                factDisplay.classList.remove('show'); // Hide fact display
+                factDisplay.classList.add('hidden'); // Ensure it's hidden
+                hintDisplay.textContent = ''; // Clear hint display
+                hintDisplay.classList.remove('show'); // Hide hint display
+                hintDisplay.classList.add('hidden'); // Ensure it's hidden
+
+                // Display the final message
+                finalMessageDisplay.textContent = "SELAMAT ANDA PINTAR";
+                finalMessageDisplay.classList.remove('hidden');
+                finalMessageDisplay.classList.add('show'); // Use 'show' for fade-in effect if desired
+            }
+        }
+
+        // Function to display messages and hide them after a delay
+        function showMessage(msg, type) {
+            messageDisplay.textContent = msg;
+            if (type === 'success') {
+                messageDisplay.className = 'message text-lg font-semibold text-green-600';
+            } else if (type === 'error') {
+                messageDisplay.className = 'message text-lg font-semibold text-red-600';
+            }
+            // Message will disappear after 2 seconds
+            setTimeout(() => {
+                messageDisplay.textContent = '';
+                messageDisplay.className = 'message text-lg font-semibold h-8'; // Reset class and height
+            }, 2000);
+        }
+
+        // Function to get an animal fact (now offline)
+        function getAnimalFact() {
+            getFactButton.disabled = true;
+            const currentAnimal = animals[currentAnimalIndex];
+            factDisplay.textContent = currentAnimal.fact || 'Tidak ada fakta menarik tersedia.'; // Get fact from local data
+            factDisplay.classList.remove('hidden');
+            factDisplay.classList.add('show');
+            hintDisplay.classList.add('hidden'); // Hide hint if fact is requested
+
+            // Re-enable button after a short delay (simulating loading)
+            setTimeout(() => {
+                getFactButton.disabled = false;
+            }, 1000); // 1 second delay
+        }
+
+        // Function to get a hint (now offline)
+        function getHint() {
+            getHintButton.disabled = true;
+            const currentAnimal = animals[currentAnimalIndex];
+            hintDisplay.textContent = currentAnimal.hint || 'Tidak ada petunjuk tersedia.'; // Get hint from local data
+            hintDisplay.classList.remove('hidden');
+            hintDisplay.classList.add('show');
+            factDisplay.classList.add('hidden'); // Hide fact if hint is requested
+
+            // Re-enable button after a short delay (simulating loading)
+            setTimeout(() => {
+                getHintButton.disabled = false;
+            }, 1000); // 1 second delay
+        }
+
+        // Event listener for answer input
+        answerInput.addEventListener('input', () => {
+            // Clear any previously set timeout for input clearing
+            if (clearInputTimeout) {
+                clearTimeout(clearInputTimeout);
+            }
+
+            const userAnswer = answerInput.value.toUpperCase().trim(); // Get user's answer (uppercase, no leading/trailing spaces)
+            const correctAnswer = animals[currentAnimalIndex].name; // Correct answer
+
+            if (userAnswer === correctAnswer) {
+                showMessage("Benar! Luar Biasa!", 'success');
+                answerInput.disabled = true; // Disable input after correct answer
+                nextButton.classList.remove('hidden'); // Show next button
+                getFactButton.classList.remove('hidden'); // Show get fact button
+                getHintButton.classList.add('hidden'); // Hide get hint button after correct answer
+            } else if (userAnswer.length === correctAnswer.length && userAnswer !== correctAnswer) {
+                // If answer length matches but it's incorrect, clear automatically after 7 seconds
+                showMessage("Salah! Jawaban akan dihapus dalam 7 detik.", 'error');
+                // Set a timeout to clear the input after 7 seconds
+                clearInputTimeout = setTimeout(() => {
+                    answerInput.value = ''; // Clear the input
+                    messageDisplay.textContent = ''; // Clear the message after clearing input
+                    messageDisplay.className = 'message text-lg font-semibold h-8'; // Reset class and height
+                }, 7000); // 7 seconds delay
+            }
+            // If answer is incomplete, no action
+        });
+
+        // Event listener for next button
+        nextButton.addEventListener('click', () => {
+            currentAnimalIndex++; // Move to the next animal
+            loadLevel(); // Load new level
+        });
+
+        // Event listener for Get Fact button
+        getFactButton.addEventListener('click', () => {
+            getAnimalFact(); // Call offline fact function
+        });
+
+        // Event listener for Get Hint button
+        getHintButton.addEventListener('click', () => {
+            getHint(); // Call offline hint function
+        });
+
+        // Load the first level when the page loads
+        window.onload = loadLevel;
+    </script>
+</body>
+</html>
